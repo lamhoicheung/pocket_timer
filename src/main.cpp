@@ -1,63 +1,83 @@
 #include <Arduino.h>
+#include <U8g2lib.h>
 
-const byte LED_R = 33;
-const byte SW = 14;
+#ifdef U8X8_HAVE_HW_SPI
+#include <SPI.h>
+#endif
+#ifdef U8X8_HAVE_HW_I2C
+#include <Wire.h>
+#endif
 
-bool LED_state = 0;
+/*
+  U8g2lib Example Overview:
+    Frame Buffer Examples: clearBuffer/sendBuffer. Fast, but may not work with all Arduino boards because of RAM consumption
+    Page Buffer Examples: firstPage/nextPage. Less RAM usage, should work with all Arduino boards.
+    U8x8 Text Only Example: No RAM usage, direct communication with display controller. No graphics, 8x8 Text only.
+    
+*/
 
-uint32_t press_time = 0;
-const uint8_t DEBOUNCE_TIME = 30;
 
-bool is_pressed = false;
+U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
+// U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE, /* clock=*/ 22, /* data=*/ 21);   // ESP32 Thing, HW I2C with pin remapping
 
-typedef enum {
-  RELEASED,
-  PRESSED,
-  RELEASED_FROM_PRESS
-} SW_Status;
 
-SW_Status checkSwitch(byte pin, bool ON = HIGH, bool pullup = false) {
 
-  SW_Status status = RELEASED;
-  
-  if (pullup) {
-    pinMode(pin, INPUT_PULLUP);
-  } else {
-    pinMode(pin, INPUT);
-  }
-
-  if (digitalRead(pin) == ON) {
-    if (!is_pressed) { // record the press time when button is pressed
-      is_pressed = true;
-      status = PRESSED;
-      press_time = millis();
-    }
-  } else {
-    if (is_pressed) {
-      if ((millis() - press_time) > DEBOUNCE_TIME) {
-        status = RELEASED_FROM_PRESS;
-      }
-      is_pressed = false;
-    }
-  }
-
-  return status;
-}
-
-void setup() {
+void setup(void) {
   Serial.begin(115200);
-  pinMode(LED_R, OUTPUT);
+  pinMode(14, INPUT_PULLUP);
+  
+  // DOGS102 Shield (http://shieldlist.org/controlconnection/dogs102)
+  // u8g2.begin(/* menu_select_pin= */ 5, /* menu_next_pin= */ 4, /* menu_prev_pin= */ 2, /* menu_home_pin= */ 3);
+  
+  // DOGM128 Shield (http://shieldlist.org/schmelle2/dogm128) + DOGXL160 Shield
+  // u8g2.begin(/* menu_select_pin= */ 2, /* menu_next_pin= */ 3, /* menu_prev_pin= */ 7, /* menu_home_pin= */ 8);
+
+  // MKR Zero Test Board
+  //u8g2.begin(/*Select=*/ 0, /*Right/Next=*/ 1, /*Left/Prev=*/ 2, /*Up=*/ 4, /*Down=*/ 3, /*Home/Cancel=*/ A6); 
+
+  // Arduboy
+  //u8g2.begin(/*Select=*/ A0, /*Right/Next=*/ 5, /*Left/Prev=*/ 9, /*Up=*/ 8, /*Down=*/ 10, /*Home/Cancel=*/ A1); // Arduboy DevKit
+//   u8g2.begin(/*Select=*/ 7, /*Right/Next=*/ A1, /*Left/Prev=*/ A2, /*Up=*/ A0, /*Down=*/ A3, /*Home/Cancel=*/ 8); // Arduboy 10 (Production)
+  u8g2.begin(14, U8X8_PIN_NONE, U8X8_PIN_NONE, U8X8_PIN_NONE, U8X8_PIN_NONE, U8X8_PIN_NONE);
+  u8g2.setFont(u8g2_font_6x12_tr);
 }
 
-void loop() {
-  switch (checkSwitch(SW, LOW, true))
-  {
-  case RELEASED_FROM_PRESS:
-    LED_state = !LED_state;
-    digitalWrite(LED_R, LED_state);
-    break;
-  
-  default:
-    break;
-  }
+const char *string_list = 
+  "Timer\n"
+  "Countdown\n"
+  "Setting";
+
+uint8_t current_selection = 3;
+
+
+void loop(void) {
+
+  // this blocks until some button events happen
+  int i = u8g2.userInterfaceSelectionList(
+    "Pocket Timer",
+    current_selection, 
+    string_list);
+
+  Serial.println(i);
+  // if ( current_selection == 0 ) {
+  //   u8g2.userInterfaceMessage(
+	// "Nothing selected.", 
+	// "",
+	// "",
+	// " ok ");
+  // } else {
+  //   u8g2.userInterfaceMessage(
+	// "Selection:", 
+	// u8x8_GetStringLineStart(current_selection-1, string_list ),
+	// "",
+	// " ok \n cancel ");
+  // }
+
+  // delay(1000);
+  // current_selection++;
+
+  // if (current_selection > 3) current_selection = 1;
+
 }
+
+
