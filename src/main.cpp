@@ -17,7 +17,7 @@ void setup() {
 void loop() {
   switch (sw.check())
   {
-  case RELEASED_FROM_PRESS:
+  case Switch::RELEASED_FROM_PRESS:
     LED_state = !LED_state;
     digitalWrite(LED_R, LED_state);
     break;
